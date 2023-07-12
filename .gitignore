@@ -5,3 +5,5 @@ report/
 node_modules/
 
 header.json
+
+sheet/service-account.json
