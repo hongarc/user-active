@@ -8,6 +8,8 @@ const mongoose = require('mongoose');
 
 const Profile = require('./profile');
 
+const SheetHandler = require('./sheet');
+
 require('dotenv').config();
 
 const headers = require('./header.json');
@@ -177,6 +179,21 @@ const report = async (target) => {
 
     const reportFile = path.join(reportFolder, `${target}.txt`);
     fs.writeFileSync(reportFile, `${activeData}\n${createdData}\n`);
+
+    return {
+      acd: dayActiveClient.total,
+      acw: weekActiveClient.total,
+      acm: monthActiveClient.total,
+      atd: dayActiveTrainer.total,
+      atw: weekActiveTrainer.total,
+      atm: monthActiveTrainer.total,
+      tccd: dayCreatedClient.total,
+      tccw: weekCreatedClient.total,
+      tccm: monthCreatedClient.total,
+      tctd: dayCreatedTrainer.total,
+      tctw: weekCreatedTrainer.total,
+      tctm: monthCreatedTrainer.total,
+    };
   } catch (error) {
     console.error('An error occurred:', error);
     throw error; // Rethrow the error to be handled by the caller
@@ -191,9 +208,22 @@ const report = async (target) => {
   if (!process.env.DATA_DOG_TOKEN) {
     throw new Error('Please set DATA_DOG_TOKEN via .env');
   }
+  if (!process.env.GOOGLE_SHEET_EMAIL) {
+    throw new Error('Please set GOOGLE_SHEET_EMAIL via .env');
+  }
+  if (!process.env.GOOGLE_SHEET_ID) {
+    throw new Error('Please set GOOGLE_SHEET_ID via .env');
+  }
 
   await mongoose.connect(process.env.MONGODB_URI);
-  await report('2023-07-02');
-  await report('2023-07-03');
+
+  const target1 = '2023-07-10';
+  const result1 = await report(target1);
+  await SheetHandler(target1, result1);
+
+  const target2 = '2023-07-11';
+  const result2 = await report(target2);
+  await SheetHandler(target2, result2);
+
   mongoose.connection.close();
 })();
