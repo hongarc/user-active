@@ -1,0 +1,39 @@
+name: Daily Cron Job
+
+on:
+  schedule:
+    - cron: '30 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Load Secret Key to File
+      env:
+        SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACCOUNT }}
+        HEADER: ${{ secrets.HEADER }}
+      run: |
+        mkdir -p sheet
+        echo "${SERVICE_ACCOUNT}" > sheet/service-account.json
+        echo "${HEADER}" > header.json
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '16'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run job
+      env:
+        DATA_DOG_TOKEN: ${{ secrets.DATA_DOG_TOKEN }}
+        GOOGLE_SHEET_EMAIL: ${{ secrets.GOOGLE_SHEET_EMAIL }}
+        GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+        MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      run: node index.js

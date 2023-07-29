@@ -1,16 +1,14 @@
-const fs = require('fs');
-const path = require('path');
+require('dotenv').config();
 
 const axios = require('axios');
 const _ = require('lodash');
 const moment = require('moment-timezone');
 const mongoose = require('mongoose');
+const { DateTime } = require('luxon');
 
 const Profile = require('./profile');
 
 const SheetHandler = require('./sheet');
-
-require('dotenv').config();
 
 const headers = require('./header.json');
 
@@ -30,15 +28,6 @@ const RANGE_TYPES = {
     endOf: 'day',
   },
 };
-
-const reportFolder = path.join(__dirname, 'report');
-const createFolderIfNotExists = (folderPath) => {
-  if (!fs.existsSync(folderPath)) {
-    fs.mkdirSync(folderPath);
-  }
-};
-
-createFolderIfNotExists(reportFolder);
 
 const getRangeDates = (date, type) => {
   const { subtract, endOf } = RANGE_TYPES[type] || {};
@@ -155,6 +144,9 @@ const report = async (target) => {
       getTotalActive(target, '1week', false),
       getTotalActive(target, '1month', false),
     ]);
+    console.log('Get total active success');
+    const activeData = `${dayActiveClient.total}\t${weekActiveClient.total}\t${monthActiveClient.total}\t${dayActiveTrainer.total}\t${weekActiveTrainer.total}\t${monthActiveTrainer.total}`;
+    console.log(target, 'activeData :', activeData);
 
     const [
       dayCreatedTrainer,
@@ -171,14 +163,9 @@ const report = async (target) => {
       getTotalCreated(target, '1week', false),
       getTotalCreated(target, '1month', false),
     ]);
-
-    const activeData = `${dayActiveClient.total}\t${weekActiveClient.total}\t${monthActiveClient.total}\t${dayActiveTrainer.total}\t${weekActiveTrainer.total}\t${monthActiveTrainer.total}`;
+    console.log('Get total created success');
     const createdData = `${dayCreatedClient.total}\t${weekCreatedClient.total}\t${monthCreatedClient.total}\t${dayCreatedTrainer.total}\t${weekCreatedTrainer.total}\t${monthCreatedTrainer.total}`;
-    console.error(target, 'activeData :', activeData);
-    console.error(target, 'createdData:', createdData);
-
-    const reportFile = path.join(reportFolder, `${target}.txt`);
-    fs.writeFileSync(reportFile, `${activeData}\n${createdData}\n`);
+    console.log(target, 'createdData:', createdData);
 
     return {
       acd: dayActiveClient.total,
@@ -214,16 +201,24 @@ const report = async (target) => {
   if (!process.env.GOOGLE_SHEET_ID) {
     throw new Error('Please set GOOGLE_SHEET_ID via .env');
   }
+  console.log('Check env success');
+  console.time('Finish');
 
+  console.time('Connect mongodb');
   await mongoose.connect(process.env.MONGODB_URI);
+  console.timeEnd('Connect mongodb');
 
-  const target1 = '2023-07-10';
-  const result1 = await report(target1);
-  await SheetHandler(target1, result1);
+  const yesterday = DateTime.fromObject({}, { zone: TIMEZONE }).minus({ day: 1 });
+  const target = yesterday.toFormat('yyyy-MM-dd');
+  console.time('Get report data');
+  const result = await report(target);
+  console.timeEnd('Get report data');
 
-  const target2 = '2023-07-11';
-  const result2 = await report(target2);
-  await SheetHandler(target2, result2);
+  console.time(`Push data to google sheet: ${target}`);
+  await SheetHandler(target, result);
+
+  console.timeEnd(`Push data to google sheet: ${target}`);
 
   mongoose.connection.close();
+  console.timeEnd('Finish');
 })();
