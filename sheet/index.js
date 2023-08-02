@@ -12,7 +12,7 @@ async function main(target, data) {
     ],
   });
 
-  const day = DateTime.fromFormat(target, 'yyyy-MM-dd').toFormat('MMM dd, yyyy');
+  const day = DateTime.fromFormat(target, 'yyyy-MM-dd').toFormat('MMM d, yyyy');
   const document = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID, serviceAccountAuth);
 
   await document.loadInfo(); // loads document properties and worksheets
